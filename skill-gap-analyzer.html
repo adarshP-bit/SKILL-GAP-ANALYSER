@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skill Gap Analyzer v3</title>
+<style>
+:root{--k:#000;--w:#fff;--g1:#f4f4f4;--g2:#d9d9d9;--g3:#6b6b6b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--w);color:var(--k);font:14px/1.5 "Helvetica Neue",Arial,sans-serif}
+header{background:var(--k);color:var(--w);padding:14px 24px;display:flex;flex-wrap:wrap;gap:8px 24px;align-items:baseline}
+header h1{margin:0;font-size:18px;letter-spacing:-.2px}
+header span{color:#bdbdbd;font-size:12px}
+#src{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+#src i{font-style:normal;font-size:12px;border:1px solid #777;border-radius:3px;padding:1px 7px}
+#src i.ok{background:var(--w);color:var(--k);border-color:var(--w)}#src i.bad{text-decoration:line-through;color:#999}
+.wrap{display:grid;grid-template-columns:400px 1fr;max-width:1320px;margin:0 auto}
+.left{padding:20px 24px;border-right:1px solid var(--k);align-self:start;position:sticky;top:0;max-height:100vh;overflow:auto}
+.right{padding:20px 28px 60px;min-width:0}
+h2{font-size:13px;margin:24px 0 8px;font-weight:700;border-bottom:2px solid var(--k);padding-bottom:4px}
+.left h2:first-child{margin-top:0}
+label{display:block;font-weight:600;margin:10px 0 4px}
+input[type=text],textarea{width:100%;border:1px solid var(--k);border-radius:0;padding:8px 10px;font:inherit;background:var(--w);color:var(--k)}
+select{border:1px solid var(--k);background:var(--w);color:var(--k);font:inherit}
+textarea{min-height:80px;resize:vertical;margin-top:8px}
+input:focus,textarea:focus,select:focus,button:focus-visible,summary:focus-visible{outline:3px solid var(--g3);outline-offset:1px}
+button{font:inherit;border:1px solid var(--k);background:var(--w);color:var(--k);padding:7px 14px;cursor:pointer}
+button:hover{background:var(--g2)}button.p{background:var(--k);color:var(--w);font-weight:600}button.p:hover{background:#333}
+.row{display:flex;gap:8px;margin-top:8px}.row>input{flex:1}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{border:1px solid var(--k);padding:2px 10px;border-radius:14px;background:var(--w);font-size:13px}
+.chip.on{background:var(--k);color:var(--w)}
+.tag{display:inline-block;border:1px solid var(--k);padding:1px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0}
+.tag.have{background:var(--k);color:var(--w)}.tag.part{background:var(--g2)}.tag.miss{border-style:dashed}
+.mine{border:1px solid var(--k);margin-top:10px;max-height:250px;overflow:auto}
+.mine div{display:grid;grid-template-columns:1fr 110px 22px;gap:8px;align-items:center;padding:4px 8px;border-bottom:1px solid var(--g2)}
+.mine button{border:0;padding:0;background:none;font-size:16px}
+small,.mut{color:var(--g3)}
+.hero{background:var(--k);color:var(--w);padding:22px 26px;display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:center}
+.hero .n{font-size:76px;font-weight:800;line-height:1;letter-spacing:-3px}
+.hero .n small{font-size:24px;color:#bdbdbd;letter-spacing:0}
+.hero b{font-size:18px}.hero p{margin:6px 0 0;color:#e6e6e6}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));border:1px solid var(--k);border-top:0}
+.stats div{padding:10px 14px;border-right:1px solid var(--k)}.stats div:last-child{border:0}
+.stats b{font-size:20px;display:block}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;color:var(--g3);font-weight:600;padding:5px 8px;border-bottom:1px solid var(--k)}
+td{padding:6px 8px;border-bottom:1px solid var(--g2);vertical-align:middle}
+.bar{height:8px;background:var(--g2);min-width:90px}.bar i{display:block;height:100%;background:var(--k)}
+.item{border:1px solid var(--k);padding:10px 14px;margin-bottom:8px}
+.item .h{display:flex;justify-content:space-between;gap:10px;font-weight:700}
+.item a{color:var(--k);margin-right:14px;font-size:13px}
+.plan{border-left:3px solid var(--k);padding-left:14px;margin:12px 0 0}.plan li{margin:0 0 6px;list-style:none}
+details{border-bottom:1px solid var(--g2);padding:6px 0}summary{cursor:pointer;display:flex;gap:12px;justify-content:space-between}
+.empty{border:1px dashed var(--k);padding:34px;text-align:center;color:var(--g3)}
+.note{border:1px solid var(--k);background:var(--g1);padding:8px 12px;margin-bottom:12px}
+.acts{display:flex;gap:8px;margin:14px 0}
+.drop{border:2px dashed var(--k);padding:18px 12px;text-align:center;cursor:pointer;background:var(--g1)}.drop:hover,.drop.over{background:var(--g2)}
+@media(max-width:860px){.wrap{grid-template-columns:1fr}.left{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--k)}.hero{grid-template-columns:1fr}}
+@media print{.left,.acts,#src{display:none}.wrap{display:block}.hero,.tag.have,.chip.on,.bar i{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media(prefers-reduced-motion:no-preference){.bar i{transition:width .5s}}
+</style>
+</head>
+<body>
+<header><h1>Skill Gap Analyzer</h1><span>Student AI · Job AI · live job data</span><span style="border:1px solid #777;padding:0 7px;border-radius:3px;color:#fff">v3 · resume upload: PDF, DOCX, TXT</span><div id="src" aria-live="polite"></div></header>
+<div class="wrap">
+<aside class="left">
+  <h2>1. Student AI: your resume, degree and skills</h2>
+  <label for="cv">Upload your resume</label>
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="Upload resume">Drop your resume here (PDF, DOCX, TXT, RTF, ODT, HTML or image), or click to choose</div>
+  <input type="file" id="cv" accept=".pdf,.docx,.odt,.rtf,.txt,.md,.html,.htm,.json,.png,.jpg,.jpeg,.webp,.bmp" hidden>
+  <div class="row"><button id="pick" class="p">Choose resume file</button><button id="sampleCv">Try a sample resume</button></div>
+  <div id="scan"></div>
+  <details><summary>Or paste resume text</summary>
+    <textarea id="resume" placeholder="Paste resume, projects or LinkedIn About text"></textarea>
+    <div class="row"><button id="resBtn">Scan text</button></div>
+  </details>
+  <small>Your resume is read in your browser and is not uploaded or saved. Image and scanned files use text recognition (OCR), which takes 20 to 40 seconds.</small>
+  <label for="deg">Degree or program</label>
+  <input type="text" id="deg" list="degDl" placeholder="e.g. B.Tech Instrumentation and Control" autocomplete="off">
+  <datalist id="degDl"></datalist>
+  <div id="sugWrap" hidden>
+    <label>Skills typical for this degree <small>(click to add or remove)</small></label>
+    <div class="chips" id="sug"></div>
+    <div class="row"><button id="selAll">Select all</button><button id="selNone">Clear all</button></div>
+  </div>
+  <label for="skAdd">Add other skills</label>
+  <div class="row"><input type="text" id="skAdd" list="skDl" placeholder="e.g. Docker" autocomplete="off"><button id="skBtn">Add</button></div>
+  <datalist id="skDl"></datalist>
+  <div class="mine" id="mine" hidden></div>
+
+  <h2>2. Job AI: target job</h2>
+  <label for="role">Target role</label>
+  <div class="row"><input type="text" id="role" placeholder="e.g. automation engineer" autocomplete="off"><button class="p" id="go">Analyze</button></div>
+  <div class="chips" id="roles"></div>
+  <p class="mut" style="font-size:12px;margin-top:14px">Results update automatically when you change skills or role. Skills are saved in this browser.</p>
+</aside>
+<main class="right" id="out"></main>
+</div>
+
+<script>
+"use strict";
+/* ===== Skill dictionary: name|aliases|category ===== */
+const RAW=`Python|python|Programming
+Java|java|Programming
+JavaScript|javascript,js,node.js,nodejs|Programming
+TypeScript|typescript|Programming
+C|embedded c,c programming|Programming
+C++|c++|Programming
+C#|c#|Programming
+Go|golang|Programming
+SQL|sql,mysql,postgresql,postgres|Programming
+MATLAB|matlab,simulink|Programming
+R|r programming|Programming
+Bash|bash,shell scripting|Programming
+Git|git,github|Programming
+Data Structures|data structures,algorithms|Programming
+Testing|testing,unit testing,qa|Programming
+HTML/CSS|html,css|Web
+React|react,reactjs,react.js|Web
+Angular|angular|Web
+Django|django|Web
+Flask|flask|Web
+REST APIs|rest,restful,rest api|Web
+Machine Learning|machine learning,ml|Data & AI
+Deep Learning|deep learning,neural network,neural networks|Data & AI
+TensorFlow|tensorflow|Data & AI
+PyTorch|pytorch|Data & AI
+Pandas|pandas|Data & AI
+NumPy|numpy|Data & AI
+Data Analysis|data analysis,data analytics|Data & AI
+Power BI|power bi,powerbi|Data & AI
+Tableau|tableau|Data & AI
+Excel|excel|Data & AI
+NLP|nlp,natural language processing|Data & AI
+Computer Vision|computer vision,opencv|Data & AI
+AWS|aws,amazon web services|Cloud & DevOps
+Azure|azure|Cloud & DevOps
+GCP|gcp,google cloud|Cloud & DevOps
+Docker|docker|Cloud & DevOps
+Kubernetes|kubernetes,k8s|Cloud & DevOps
+Linux|linux|Cloud & DevOps
+CI/CD|ci/cd,jenkins,github actions|Cloud & DevOps
+Terraform|terraform|Cloud & DevOps
+MongoDB|mongodb|Cloud & DevOps
+Cybersecurity|cybersecurity,network security,infosec|Cloud & DevOps
+PLC|plc,plcs,programmable logic controller|Instrumentation & Control
+SCADA|scada|Instrumentation & Control
+HMI|hmi|Instrumentation & Control
+DCS|dcs,distributed control system|Instrumentation & Control
+PID Control|pid,pid control|Instrumentation & Control
+Control Systems|control systems,control system,control engineering|Instrumentation & Control
+LabVIEW|labview|Instrumentation & Control
+Industrial Automation|industrial automation,automation|Instrumentation & Control
+Instrumentation|instrumentation,sensors,transducers|Instrumentation & Control
+Modbus/OPC|modbus,profibus,profinet,opc ua,opc|Instrumentation & Control
+Process Engineering|process engineering,process control,p&id|Instrumentation & Control
+Embedded Systems|embedded systems,embedded|Electronics
+Arduino|arduino|Electronics
+Raspberry Pi|raspberry pi|Electronics
+Microcontrollers|microcontroller,microcontrollers,stm32,arm cortex,esp32,avr|Electronics
+RTOS|rtos,freertos|Electronics
+IoT|iot,internet of things,mqtt|Electronics
+Signal Processing|signal processing,dsp|Electronics
+PCB Design|pcb,altium,kicad|Electronics
+Circuit Design|circuit design,analog design,electronics|Electronics
+FPGA/VHDL|vhdl,verilog,fpga|Electronics
+Robotics|robotics,ros|Electronics
+CAD|autocad,solidworks,cad|Electronics
+Communication|communication,communications|Soft
+Teamwork|teamwork,collaboration|Soft
+Problem Solving|problem solving,problem-solving|Soft
+Project Management|project management,agile,scrum|Soft
+Technical Writing|technical writing,documentation|Soft
+Leadership|leadership|Soft
+Business Analysis|business analysis,requirements gathering|Soft`;
+const esc=s=>s.replace(/[.*+?^${}()|[\]\\\/]/g,"\\$&");
+const SK=RAW.split("\n").map(l=>{const[n,a,c]=l.split("|");
+  return{name:n,cat:c,re:new RegExp("(^|[^a-z0-9+#.])("+[...new Set([n.toLowerCase(),...a.split(",")])].map(esc).join("|")+")(?![a-z0-9+#])","gi")}});
+const BY=Object.fromEntries(SK.map(s=>[s.name,s]));
+
+/* ===== Student AI: degree presets ===== */
+const DEG=[
+{k:["instrumentation","control engineering","ice","i&c"],
+ s:["Control Systems","PID Control","PLC","SCADA","HMI","Instrumentation","MATLAB","LabVIEW","Industrial Automation","Modbus/OPC","Embedded Systems","Arduino","Microcontrollers","Python","C","Circuit Design","Signal Processing","IoT","DCS"],
+ r:["automation engineer","instrumentation engineer","control systems engineer","embedded engineer"]},
+{k:["electronics","ece","communication engineering","telecom"],
+ s:["Circuit Design","Embedded Systems","Microcontrollers","Signal Processing","PCB Design","FPGA/VHDL","C","Python","MATLAB","IoT","Arduino","RTOS"],r:["embedded engineer","hardware engineer","firmware engineer"]},
+{k:["electrical","eee"],
+ s:["Circuit Design","Control Systems","PLC","MATLAB","CAD","Instrumentation","Industrial Automation","Excel","Project Management"],r:["electrical engineer","automation engineer","power engineer"]},
+{k:["computer science","cse","information technology","it","software","bca","mca","computer applications"],
+ s:["Python","Java","JavaScript","SQL","Data Structures","Git","Linux","HTML/CSS","REST APIs","Testing","Problem Solving","Teamwork"],r:["software engineer","backend developer","frontend developer"]},
+{k:["data science","artificial intelligence","machine learning","ai","analytics"],
+ s:["Python","SQL","Machine Learning","Pandas","NumPy","Data Analysis","Deep Learning","Power BI","Excel","Git","Problem Solving"],r:["data analyst","machine learning engineer","data scientist"]},
+{k:["mechanical","mechatronics","automobile","production"],
+ s:["CAD","MATLAB","Robotics","PLC","Industrial Automation","Project Management","Excel","Problem Solving","Teamwork","Technical Writing"],r:["mechanical engineer","mechatronics engineer","design engineer"]},
+{k:["civil","structural"],
+ s:["CAD","Project Management","Excel","Technical Writing","Communication","Problem Solving","Teamwork"],r:["civil engineer","site engineer","structural engineer"]},
+{k:["chemical","petroleum","process"],
+ s:["Process Engineering","DCS","Instrumentation","MATLAB","Excel","Python","Project Management","Technical Writing"],r:["process engineer","instrumentation engineer","plant engineer"]},
+{k:["business","mba","commerce","bba","management"],
+ s:["Excel","Power BI","Tableau","SQL","Data Analysis","Business Analysis","Project Management","Communication","Leadership"],r:["business analyst","project manager","operations analyst"]}
+];
+const DEGNAMES=["B.Tech Instrumentation and Control Engineering","B.Tech Electronics and Communication","B.Tech Electrical and Electronics","B.Tech Computer Science","B.Tech Mechanical","B.Tech Civil","B.Tech Chemical","BCA","MCA","MBA","B.Sc Data Science"];
+const degMatch=t=>{t=" "+t.toLowerCase().replace(/[^a-z&]+/g," ")+" ";return DEG.find(d=>d.k.some(k=>t.includes(" "+k+" ")||(k.length>4&&t.includes(k))))};
+
+/* ===== Helpers ===== */
+const $=s=>document.querySelector(s);
+const h=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const strip=x=>{try{return new DOMParser().parseFromString(x||"","text/html").body.textContent.replace(/\s+/g," ").trim()}catch{return String(x||"")}};
+const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+const debounce=(f,t)=>{let x;return(...a)=>{clearTimeout(x);x=setTimeout(()=>f(...a),t)}};
+const LV=["","Beginner","Basic","Working","Advanced","Expert"];
+const S={skills:store.get("sga2.skills",{}),degree:store.get("sga2.degree",""),role:store.get("sga2.role",""),suggest:[],roles:[],jobs:[],src:{},busy:false,auto:false,roleAuto:false,resume:"",rs:null};
+const persist=()=>{store.set("sga2.skills",S.skills);store.set("sga2.degree",S.degree);store.set("sga2.role",S.role)};
+
+function extract(text,title="",tags=[]){
+  const out={},t=text+" "+tags.join(" ");
+  for(const s of SK){s.re.lastIndex=0;const n=(t.match(s.re)||[]).length;s.re.lastIndex=0;const it=s.re.test(title);
+    if(n||it)out[s.name]={w:(s.cat==="Soft"?.5:1)+(it?1:0)+(n>=3?.5:0)}}
+  return out;
+}
+const CERTS=[["PMP",/\bpmp\b/i],["Six Sigma",/six sigma/i],["AWS certification",/aws certified|aws certification/i],["Azure certification",/azure (certified|certification)|az-\d{3}/i],["CCNA",/\bccna\b/i],["CISSP",/\bcissp\b/i],["ISA certification (CCST or CAP)",/\bccst\b|certified automation professional/i],["Professional Engineer license",/professional engineer|\bp\.?e\.? license/i],["Scrum certification",/\bcsm\b|scrum master/i]];
+
+/* ===== Live job sources (free, no API key) ===== */
+const PROXY=location.protocol==="http:"&&["localhost","127.0.0.1"].includes(location.hostname);
+async function getJSON(url){
+  const tries=(PROXY?["/proxy?url="+encodeURIComponent(url)]:[]).concat(url);let err;
+  for(const u of tries){const c=new AbortController(),t=setTimeout(()=>c.abort(),15000);
+    try{const r=await fetch(u,{signal:c.signal});if(!r.ok)throw Error("HTTP "+r.status);return await r.json()}catch(e){err=e}finally{clearTimeout(t)}}
+  throw err;
+}
+const E=encodeURIComponent;
+const SRC=[
+{n:"Remotive",u:q=>["https://remotive.com/api/remote-jobs?limit=100&search="+E(q)],m:d=>(d.jobs||[]).map(j=>({title:j.title,company:j.company_name,loc:j.candidate_required_location,url:j.url,html:j.description,tags:j.tags||[]}))},
+{n:"Arbeitnow",u:()=>["https://www.arbeitnow.com/api/job-board-api","https://www.arbeitnow.com/api/job-board-api?page=2"],m:d=>(d.data||[]).map(j=>({title:j.title,company:j.company_name,loc:j.location,url:j.url,html:j.description,tags:j.tags||[]}))},
+{n:"The Muse",u:()=>[1,2,3].map(p=>"https://www.themuse.com/api/public/jobs?page="+p),m:d=>(d.results||[]).map(j=>({title:j.name,company:j.company&&j.company.name,loc:(j.locations||[]).map(l=>l.name).join(", "),url:j.refs&&j.refs.landing_page,html:j.contents,tags:[]}))},
+{n:"Jobicy",u:q=>["https://jobicy.com/api/v2/remote-jobs?count=50&tag="+E(q)],m:d=>(d.jobs||[]).map(j=>({title:j.jobTitle,company:j.companyName,loc:j.jobGeo,url:j.url,html:j.jobDescription||j.jobExcerpt,tags:[].concat(j.jobIndustry||[])}))},
+{n:"RemoteOK",u:()=>["https://remoteok.com/api"],m:d=>(Array.isArray(d)?d:[]).filter(j=>j.position).map(j=>({title:j.position,company:j.company,loc:j.location,url:j.url,html:j.description,tags:j.tags||[]}))},
+{n:"Himalayas",u:q=>["https://himalayas.app/jobs/api/search?q="+E(q)],m:d=>(d.jobs||[]).map(j=>({title:j.title,company:j.companyName,loc:(j.locationRestrictions||[]).join(", "),url:j.applicationLink,html:j.description||j.excerpt,tags:j.categories||[]}))}
+];
+const SAMPLE=[
+["Automation Engineer","Sample Industries","Design and commission PLC and SCADA systems. Configure HMI screens, tune PID loops, work with Modbus and Profinet devices. Strong control systems and instrumentation knowledge. Teamwork and documentation required. 2 years experience."],
+["Instrumentation and Control Engineer","Sample Process Ltd","Maintain DCS and PLC systems in process plants. Calibrate sensors and transducers, prepare P&ID documentation, troubleshoot control loops. Knowledge of PID control, SCADA and Modbus, OPC. Bachelor degree."],
+["Embedded Systems Engineer","Sample Devices","Develop firmware in embedded C and C++ for STM32 and ESP32 microcontrollers. RTOS, IoT protocols, circuit design, PCB design with KiCad or Altium. Git and Linux required. 3 years experience."],
+["Controls Software Engineer","Sample Robotics","Build control algorithms in Python and MATLAB, simulate with Simulink, integrate ROS robotics stack. Signal processing and control systems background. Git, Linux, Docker a plus."],
+["IoT Solutions Developer","Sample Cloud","Connect sensors to the cloud using Raspberry Pi and Arduino. Python, REST APIs, MQTT, AWS, Docker. Dashboards with Power BI. Problem solving and teamwork."],
+["Test and Measurement Engineer","Sample Labs","Automated test setups with LabVIEW and Python. Instrumentation, sensors, DSP and circuit design. Technical writing and documentation. Project management with agile."]
+].map(([title,company,text])=>({title,company,loc:"Sample",url:"",html:text,tags:[]}));
+const GENERIC=new Set(["engineer","developer","manager","senior","junior","analyst","specialist","and","the","for","with","lead"]);
+function relevant(j,q){
+  let w=q.toLowerCase().split(/[^a-z0-9+#]+/).filter(x=>x.length>2);const sp=w.filter(x=>!GENERIC.has(x));if(sp.length)w=sp;
+  if(!w.length)return true;
+  const t=(j.title||"").toLowerCase(),b=j._t.toLowerCase();
+  return w.some(x=>t.includes(x))||w.filter(x=>b.includes(x)).length>=Math.min(2,w.length);
+}
+
+/* ===== Job AI: fetch and normalize ===== */
+const seen=new Set();
+function addJobs(list,source,q){
+  let n=0;
+  for(const j of list){
+    j._t=strip(j.html);
+    if(!relevant(j,q))continue;
+    const key=((j.title||"")+"|"+(j.company||"")).toLowerCase();
+    if(seen.has(key))continue;
+    const skills=extract(j._t.slice(0,20000),j.title||"",j.tags||[]);
+    if(!Object.keys(skills).length)continue;
+    seen.add(key);n++;
+    const yr=(j._t.match(/(\d{1,2})\s*\+?\s*(?:-\s*\d{1,2}\s*)?years?/i)||[])[1];
+    S.jobs.push({title:j.title||"Untitled",company:j.company||"",loc:j.loc||"",url:j.url||"",source,skills,
+      years:yr&&+yr<=15?+yr:null,certs:CERTS.filter(c=>c[1].test(j._t)).map(c=>c[0]),degree:/bachelor|b\.?tech|degree/i.test(j._t)});
+  }
+  return n;
+}
+async function search(){
+  const q=S.role.trim();if(!q||S.busy)return;
+  S.busy=true;S.jobs=[];seen.clear();S.src={};renderSrc();render();
+  await Promise.allSettled(SRC.map(async s=>{
+    S.src[s.n]={state:"load"};renderSrc();
+    try{
+      const parts=(await Promise.allSettled(s.u(q).map(getJSON))).filter(p=>p.status==="fulfilled");
+      if(!parts.length)throw Error("failed");
+      let n=0;parts.forEach(p=>{n+=addJobs(s.m(p.value),s.n,q)});
+      S.src[s.n]={state:"ok",n};
+    }catch{S.src[s.n]={state:"bad"}}
+    renderSrc();render();
+  }));
+  S.offline=false;
+  if(S.jobs.length<5){addJobs(SAMPLE,"Offline sample","");S.offline=true}
+  S.busy=false;
+  if(S.auto){S.auto=false;const A=analyze();if(A){S.suggest=A.m.slice(0,14).map(x=>x.s);renderSug()}}
+  render();
+}
+
+/* ===== Comparison engine ===== */
+function cmp(j){
+  const r={have:[],part:[],miss:[]};let g=0,t=0;
+  for(const[s,v]of Object.entries(j.skills)){const lv=S.skills[s]||0;t+=v.w;
+    if(lv>=3){r.have.push([s,lv]);g+=v.w}else if(lv>0){r.part.push([s,lv]);g+=v.w/2}else r.miss.push([s,0])}
+  r.score=t?Math.round(g/t*100):0;return r;
+}
+function analyze(){
+  const J=S.jobs,n=J.length;if(!n)return null;
+  const d={};J.forEach(j=>Object.keys(j.skills).forEach(s=>d[s]=(d[s]||0)+1));
+  const m=Object.entries(d).map(([s,c])=>({s,c,dem:c/n,lv:S.skills[s]||0,cat:BY[s].cat})).sort((a,b)=>b.c-a.c);
+  const top=m.filter(x=>x.dem>=.05).slice(0,20);
+  let g=0,t=0;top.forEach(x=>{const w=x.dem*(x.cat==="Soft"?.5:1);t+=w;g+=w*(x.lv>=3?1:x.lv>0?.5:0)});
+  const score=t?Math.round(g/t*100):0;
+  const gaps=m.filter(x=>x.lv<3&&x.dem>=.05).slice(0,8);
+  const extras=m.filter(x=>x.lv<3&&!gaps.includes(x)&&x.dem>=.08).slice(0,8);
+  const have=top.filter(x=>x.lv>=3);
+  const cc={};J.forEach(j=>j.certs.forEach(c=>cc[c]=(cc[c]||0)+1));
+  const certs=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,4);
+  const ys=J.map(j=>j.years).filter(x=>x!=null).sort((a,b)=>a-b);
+  const yrs=ys.length?ys[Math.floor(ys.length/2)]:null;
+  const degPct=Math.round(J.filter(j=>j.degree).length/n*100);
+  let wk=0;const plan=gaps.map(x=>{const w=x.lv?2:4,a=wk+1;wk+=w;return{...x,a,b:wk}});
+  const ranked=J.map(j=>({j,...cmp(j)})).sort((a,b)=>b.score-a.score);
+  return{n,m,top,score,gaps,extras,have,certs,yrs,degPct,plan,wk,ranked};
+}
+function verdict(s){return s>=75?"Ready to apply":s>=50?"Close: fill a few gaps":s>=25?"Building: focus on the top gaps":"Early stage: start with the fundamentals"}
+const q=s=>E(s);
+const links=s=>`<a href="https://www.youtube.com/results?search_query=${q(s)}+tutorial+for+beginners" target="_blank" rel="noopener">YouTube</a><a href="https://www.coursera.org/search?query=${q(s)}" target="_blank" rel="noopener">Coursera</a><a href="https://www.google.com/search?q=NPTEL+${q(s)}+course" target="_blank" rel="noopener">NPTEL</a><a href="https://www.google.com/search?q=${q(s)}+beginner+project+ideas" target="_blank" rel="noopener">Project ideas</a>`;
+const stTag=(lv)=>lv>=3?`<span class="tag have">Have · ${lv}</span>`:lv>0?`<span class="tag part">Partial · ${lv}</span>`:`<span class="tag miss">Missing</span>`;
+
+/* ===== Rendering ===== */
+let REPORT="";
+function renderSrc(){$("#src").innerHTML=Object.entries(S.src).map(([n,v])=>`<i class="${v.state==="ok"?"ok":v.state==="bad"?"bad":""}">${h(n)} ${v.state==="ok"?v.n:v.state==="load"?"…":"offline"}</i>`).join("")}
+function renderSug(){
+  $("#sugWrap").hidden=!S.suggest.length;
+  $("#sug").innerHTML=S.suggest.map(s=>`<button class="chip ${S.skills[s]?"on":""}" data-t="${h(s)}" aria-pressed="${!!S.skills[s]}">${h(s)}</button>`).join("");
+}
+function renderRoles(){$("#roles").innerHTML=S.roles.map(r=>`<button class="chip ${r===S.role?"on":""}" data-r="${h(r)}">${h(r)}</button>`).join("")}
+function renderMine(){
+  const e=Object.entries(S.skills).sort((a,b)=>b[1]-a[1]);$("#mine").hidden=!e.length;
+  $("#mine").innerHTML=e.map(([n,l])=>`<div><span>${h(n)}</span><select data-s="${h(n)}" aria-label="${h(n)} level">${[1,2,3,4,5].map(i=>`<option value="${i}" ${i===l?"selected":""}>${i} ${LV[i]}</option>`).join("")}</select><button data-x="${h(n)}" aria-label="Remove ${h(n)}">×</button></div>`).join("");
+}
+const empty=t=>`<div class="empty">${t}</div>`;
+function render(){
+  const o=$("#out");
+  if(!S.role.trim()){o.innerHTML=cvShowcase(null)+empty("Upload your resume or enter your degree on the left. Skills and target roles appear, and live job requirements load automatically.");return}
+  const A=analyze();
+  if(!A){o.innerHTML=cvShowcase(null)+empty(S.busy?`Fetching live "${h(S.role)}" jobs from open job APIs…`:`No matching jobs found for "${h(S.role)}". Try a broader keyword such as "engineer".`);return}
+  const nSk=Object.keys(S.skills).length;
+  const cv=cvCheck(A);
+  const bad=Object.values(S.src).filter(v=>v.state==="bad").length;
+  const names=A.gaps.slice(0,3).map(x=>x.s).join(", ");
+  const sum=`${A.have.length} of the top ${A.top.length} skills covered across ${A.n} live "${S.role}" postings.${names?` Biggest gaps: ${names}.`:""}${A.wk?` About ${A.wk} weeks of focused study to reach working level (3) in each gap.`:""}`;
+  REPORT=`SKILL GAP REPORT\nDegree: ${S.degree||"-"}\nTarget role: ${S.role}\nMatch: ${A.score}% (${verdict(A.score)})\n${sum}\n\nTOP REQUIRED SKILLS\n${A.top.map(x=>`- ${x.s}: ${Math.round(x.dem*100)}% of jobs | you: ${x.lv?"level "+x.lv:"missing"}`).join("\n")}\n\nLEARN NEXT\n${A.plan.map(x=>`- Weeks ${x.a}-${x.b}: ${x.s}`).join("\n")}\n\nALSO WORTH LEARNING\n${A.extras.map(x=>`- ${x.s} (${Math.round(x.dem*100)}%)`).join("\n")||"-"}${A.certs.length?"\n\nCERTIFICATIONS SEEN\n"+A.certs.map(c=>`- ${c[0]} (${c[1]} jobs)`).join("\n"):""}${cv?"\n\nRESUME CHECK\n- CV keyword match: "+cv.kw+"%"+(cv.addKw.length?"\n- Add to CV: "+cv.addKw.join(", "):"")+cv.tips.map(x=>"\n- "+x).join(""):""}`;
+  o.innerHTML=`
+  ${S.offline?`<div class="note">Live sources returned too few results, so offline sample jobs were added. Check your connection, or try a broader role.</div>`:""}
+  ${!PROXY&&bad>=2?`<div class="note">Some sources were blocked by the browser. Start the app with the .bat file to route requests through the local server.</div>`:""}
+  ${!nSk?`<div class="note">Select or add your skills on the left to see your real match.</div>`:""}
+  <div class="hero"><div class="n">${A.score}<small>%</small></div><div><b>${verdict(A.score)}</b><p>${h(sum)}</p></div></div>
+  <div class="stats"><div><b>${A.n}</b>live jobs analyzed</div><div><b>${A.have.length}/${A.top.length}</b>top skills covered</div><div><b>${A.gaps.length}</b>priority gaps</div><div><b>${A.yrs!=null?A.yrs+" yrs":"n/a"}</b>typical experience asked</div><div><b>${A.degPct}%</b>mention a degree</div>${cv?`<div><b>${cv.kw}%</b>CV keywords match</div>`:""}</div>
+  <div class="acts"><button id="copy">Copy report</button><button id="print">Print or save PDF</button></div>
+  ${cvShowcase(A)}
+  <h2>Live job requirements vs your skills</h2>
+  <table><tr><th>Skill</th><th style="width:34%">Asked in</th><th>You</th></tr>${A.top.map(x=>`<tr><td>${h(x.s)}</td><td><div class="bar"><i style="width:${Math.round(x.dem*100)}%"></i></div><small>${Math.round(x.dem*100)}% of jobs</small></td><td>${stTag(x.lv)}</td></tr>`).join("")}</table>
+  <h2>What to learn next</h2>
+  ${A.gaps.length?A.gaps.map(x=>`<div class="item"><div class="h"><span>${h(x.s)} ${stTag(x.lv)}</span><span>${Math.round(x.dem*100)}% of jobs</span></div><small>${x.lv?"Raise from level "+x.lv+" to 3 by building a small project.":"Start with the basics, then build one small project."}</small><div style="margin-top:4px">${links(x.s)}</div></div>`).join("")+`<ul class="plan">${A.plan.map(x=>`<li><b>Weeks ${x.a}–${x.b}</b> ${h(x.s)}</li>`).join("")}</ul>`:empty("No major gaps. Your skills cover what these jobs ask for.")}
+  <h2>Also worth learning for this job</h2>
+  <p>${A.extras.length?A.extras.map(x=>`<span class="tag miss">${h(x.s)} · ${Math.round(x.dem*100)}%</span>`).join(""):'<span class="mut">No additional skills stand out.</span>'}</p>
+  ${A.certs.length?`<p><b>Certifications mentioned:</b> ${A.certs.map(c=>`<span class="tag">${h(c[0])} · ${c[1]}</span>`).join("")}</p>`:""}
+  ${cv?`<h2>Resume check for this job</h2>
+  <p><b>${cv.kw}%</b> of the top required skills appear in your resume.</p>
+  ${cv.addKw.length?`<p>Skills you rated 3 or higher but your resume never mentions. Add these to your CV:<br>${cv.addKw.map(x=>`<span class="tag have">${h(x)}</span>`).join("")}</p>`:'<p class="mut">Your resume mentions all the required skills you have.</p>'}
+  ${cv.tips.length?`<ul class="plan">${cv.tips.map(x=>`<li>${h(x)}</li>`).join("")}</ul>`:'<p class="mut">Resume structure looks good.</p>'}`:""}
+  <h2>Live job matches</h2>
+  ${A.ranked.slice(0,15).map(({j,score,have,part,miss})=>`<details><summary><span><b>${h(j.title)}</b> <small>${h(j.company)} · ${h(j.source)}</small></span><b>${score}%</b></summary>
+    <p>${have.map(x=>`<span class="tag have">${h(x[0])}</span>`).join("")}${part.map(x=>`<span class="tag part">${h(x[0])} ${x[1]}→3</span>`).join("")}${miss.map(x=>`<span class="tag miss">${h(x[0])}</span>`).join("")}</p>
+    ${j.url?`<a href="${h(j.url)}" target="_blank" rel="noopener" style="color:#000">Open posting</a>`:""}</details>`).join("")}`;
+}
+
+/* ===== Events ===== */
+const refresh=debounce(()=>{persist();renderSug();renderMine();render()},120);
+function onDegree(){
+  const v=$("#deg").value.trim();S.degree=v;persist();if(!v)return;
+  const d=degMatch(v);
+  if(d){S.suggest=d.s;S.roles=d.r;renderSug();
+    if(!S.role||S.roleAuto){S.role=d.r[0];S.roleAuto=true;$("#role").value=S.role;renderRoles();search()}else renderRoles();
+  }else if(v.length>3){S.suggest=[];S.roles=[];S.role=v;S.roleAuto=true;$("#role").value=v;S.auto=true;renderRoles();search()}
+}
+function setRole(r){S.role=r.trim();S.roleAuto=false;$("#role").value=S.role;persist();renderRoles();search()}
+function addSkill(){const raw=$("#skAdd").value.trim();if(!raw)return;const m=SK.find(s=>s.name.toLowerCase()===raw.toLowerCase());const n=m?m.name:raw;if(!S.skills[n])S.skills[n]=3;$("#skAdd").value="";refresh()}
+$("#deg").oninput=debounce(onDegree,700);$("#deg").onchange=onDegree;
+$("#go").onclick=()=>setRole($("#role").value);
+$("#role").onkeydown=e=>{if(e.key==="Enter")setRole($("#role").value)};
+$("#roles").onclick=e=>{const r=e.target.dataset.r;if(r)setRole(r)};
+$("#sug").onclick=e=>{const t=e.target.dataset.t;if(!t)return;if(S.skills[t])delete S.skills[t];else S.skills[t]=3;refresh()};
+$("#selAll").onclick=()=>{S.suggest.forEach(s=>{if(!S.skills[s])S.skills[s]=3});refresh()};
+$("#selNone").onclick=()=>{S.suggest.forEach(s=>delete S.skills[s]);refresh()};
+$("#skBtn").onclick=addSkill;$("#skAdd").onkeydown=e=>{if(e.key==="Enter")addSkill()};
+$("#mine").onchange=e=>{const s=e.target.dataset.s;if(s){S.skills[s]=+e.target.value;refresh()}};
+$("#mine").onclick=e=>{const x=e.target.dataset.x;if(x){delete S.skills[x];refresh()}};
+/* ===== Resume upload and scan ===== */
+const SAMPLE_CV="Pillow K\nB.Tech Instrumentation and Control Engineering, KTU, 2027\nSkills: PLC programming, SCADA, HMI design, MATLAB, Simulink, Arduino, Python, C programming, PID control, LabVIEW\nProjects: Three-band audio equalizer using op-amps and active filters. PLC ladder logic for a bottling line with SCADA screens. Arduino based temperature logger with 15 sensors.\nInternship: instrumentation training at a process plant, calibrated sensors and prepared documentation.\nGitHub: github.com/example";
+const ROLEBYCAT={"Instrumentation & Control":"automation engineer","Electronics":"embedded engineer","Programming":"software engineer","Web":"web developer","Data & AI":"data analyst","Cloud & DevOps":"devops engineer"};
+const CDN={
+  pdf:["libs/pdf.min.js","https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"],
+  worker:["libs/pdf.worker.min.js","https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"],
+  ocr:["https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.5/tesseract.min.js"]};
+const loaded={};
+function loadScript(urls){
+  const k=urls.join("|");
+  return loaded[k]||(loaded[k]=(async()=>{
+    for(const u of urls){try{await new Promise((res,rej)=>{const t=document.createElement("script");t.src=u;t.onload=res;t.onerror=rej;document.head.appendChild(t)});return}catch{}}
+    delete loaded[k];throw Error("Could not load a reader library. Check your internet connection.");
+  })());
+}
+const readable=t=>{const n=(t||"").replace(/\s/g,"");return n.length>=80&&(n.match(/[A-Za-z]/g)||[]).length/n.length>0.6};
+
+/* Built-in ZIP reader (DOCX and ODT are zip files). No library needed. */
+async function zipFile(buf,want){
+  if(typeof DecompressionStream==="undefined")throw Error("This browser is too old to open the file. Use Chrome or Edge, or paste the text.");
+  const v=new DataView(buf),u=new Uint8Array(buf);let e=u.length-22;
+  while(e>=0&&v.getUint32(e,true)!==0x06054b50)e--;
+  if(e<0)throw Error("This is not a valid DOCX or ODT file.");
+  let n=v.getUint16(e+10,true),p=v.getUint32(e+16,true);
+  while(n--){
+    const m=v.getUint16(p+10,true),cs=v.getUint32(p+20,true),nl=v.getUint16(p+28,true),xl=v.getUint16(p+30,true),cl=v.getUint16(p+32,true),lo=v.getUint32(p+42,true);
+    if(new TextDecoder().decode(u.subarray(p+46,p+46+nl))===want){
+      const ds=lo+30+v.getUint16(lo+26,true)+v.getUint16(lo+28,true),raw=u.subarray(ds,ds+cs);
+      if(m===0)return new TextDecoder().decode(raw);
+      return await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text();
+    }
+    p+=46+nl+xl+cl;
+  }
+  return null;
+}
+const xmlText=x=>x.replace(/<\/w:p>|<\/text:p>|<\/text:h>|<w:br\/>/g,"\n").replace(/<w:tab\/>/g," ").replace(/<[^>]+>/g,"").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&apos;/g,"'");
+async function docxText(buf){const x=await zipFile(buf,"word/document.xml");if(x==null)throw Error("This is not a valid DOCX file.");return xmlText(x)}
+async function odtText(buf){const x=await zipFile(buf,"content.xml");if(x==null)throw Error("This is not a valid ODT file.");return xmlText(x)}
+const rtfText=x=>x.replace(/\{\\(?:fonttbl|colortbl|stylesheet|info)(?:[^{}]|\{[^{}]*\})*\}/g,"").replace(/\\par[d]?/g,"\n").replace(/\\'[0-9a-f]{2}/gi," ").replace(/\{\\\*[^}]*\}/g,"").replace(/\\[a-z]+-?\d* ?/gi,"").replace(/[{}]/g,"");
+
+/* PDF reading: pdf.js first, then a built-in basic reader, then OCR for scanned files */
+async function setupPdf(){
+  await loadScript(CDN.pdf);
+  if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+    for(const u of CDN.worker){try{const r=await fetch(u);if(!r.ok)continue;pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([await r.text()],{type:"text/javascript"}));break}catch{}}
+  }
+}
+function a85(str){
+  str=str.replace(/\s/g,"").replace(/^<~/,"").replace(/~>.*$/,"");const out=[];let g=[];
+  const put=(g,n)=>{let v=0;for(const x of g)v=v*85+x;out.push(...[(v>>>24)&255,(v>>>16)&255,(v>>>8)&255,v&255].slice(0,n))};
+  for(const ch of str){
+    if(ch==="z"&&!g.length){out.push(0,0,0,0);continue}
+    g.push(ch.charCodeAt(0)-33);if(g.length===5){put(g,4);g=[]}
+  }
+  if(g.length){const n=g.length;while(g.length<5)g.push(84);put(g,n-1)}
+  return new Uint8Array(out);
+}
+async function pdfBasic(buf){
+  const u=new Uint8Array(buf),s=new TextDecoder("latin1").decode(u),re=/stream\r?\n/g;let m,out="";
+  const unesc=x=>x.replace(/\\([nrtbf()\\]|[0-7]{1,3})/g,(_,c)=>({n:"\n",r:" ",t:" ",b:"",f:"","(":"(",")":")","\\":"\\"}[c]??String.fromCharCode(parseInt(c,8))));
+  while((m=re.exec(s))){
+    const st=m.index+m[0].length,en=s.indexOf("endstream",st);if(en<0)break;
+    let d=u.subarray(st,en);const hd=s.slice(Math.max(0,m.index-300),m.index);
+    if(/ASCII85Decode/.test(hd))d=a85(s.slice(st,en));
+    if(/FlateDecode/.test(hd)){try{d=new Uint8Array(await new Response(new Blob([d]).stream().pipeThrough(new DecompressionStream("deflate"))).arrayBuffer())}catch{continue}}
+    const t=new TextDecoder("latin1").decode(d);
+    for(const b of t.match(/BT[\s\S]*?ET/g)||[]){
+      for(const p of b.match(/\[(?:\\.|[^\]])*\]\s*TJ|\((?:\\.|[^\\)])*\)\s*Tj|\bT[dD*]\b/g)||[]){
+        if(/^T/.test(p)){out+="\n";continue}
+        for(const x of p.match(/\((?:\\.|[^\\)])*\)|-?\d+\.?\d*/g)||[]){out+=x[0]==="("?unesc(x.slice(1,-1)):(+x<-200?" ":"")}
+        out+=" ";
+      }
+    }
+  }
+  return out;
+}
+async function readPdf(buf){
+  let t="";
+  try{
+    await setupPdf();const pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;
+    for(let i=1;i<=pdf.numPages;i++){const c=await(await pdf.getPage(i)).getTextContent();t+=c.items.map(x=>x.str+(x.hasEOL?"\n":" ")).join("")+"\n"}
+  }catch{}
+  if(!readable(t)){try{t=await pdfBasic(buf)}catch{}}
+  if(!readable(t))t=await ocrPdf(buf);
+  return t;
+}
+async function ocr(src,msg){
+  $("#scan").innerHTML=`<div class="note">${msg}</div>`;
+  await loadScript(CDN.ocr);
+  return(await Tesseract.recognize(src,"eng")).data.text;
+}
+async function ocrPdf(buf){
+  await setupPdf();const pdf=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;let out="";
+  for(let i=1;i<=Math.min(pdf.numPages,3);i++){
+    const pg=await pdf.getPage(i),vp=pg.getViewport({scale:2}),c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;
+    await pg.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;
+    out+=await ocr(c,`Scanned PDF: running OCR on page ${i}…`)+"\n";
+  }
+  return out;
+}
+async function handleFile(f){
+  if(!f)return;const box=$("#scan");box.innerHTML=`<div class="note">Reading ${h(f.name)}…</div>`;
+  try{
+    const ext=f.name.split(".").pop().toLowerCase();let t;
+    if(ext==="pdf")t=await readPdf(await f.arrayBuffer());
+    else if(ext==="docx")t=await docxText(await f.arrayBuffer());
+    else if(ext==="odt")t=await odtText(await f.arrayBuffer());
+    else if(ext==="rtf")t=rtfText(await f.text());
+    else if(ext==="html"||ext==="htm")t=strip(await f.text());
+    else if(["png","jpg","jpeg","webp","bmp"].includes(ext))t=await ocr(f,`Running OCR on ${h(f.name)}…`);
+    else if(["txt","md","json","csv"].includes(ext)||(f.type||"").startsWith("text/"))t=await f.text();
+    else throw Error("This file type is not supported. Use PDF, DOCX, TXT, RTF, ODT, HTML or an image. For an old .doc file, save it as DOCX or PDF first.");
+    scanResume(t,f.name);
+  }catch(e){box.innerHTML=`<div class="note">${h(e.message||"Could not read this file.")} You can also paste the text below.</div>`}
+}
+function scanResume(t,name){
+  t=t.replace(/[ \t]+/g," ").trim();
+  if(t.length<80){$("#scan").innerHTML='<div class="note">No readable text found. If this is a scanned PDF, paste the text instead.</div>';return}
+  S.resume=t;S.rs={};const found=[];
+  for(const k of SK){k.re.lastIndex=0;const n=(t.match(k.re)||[]).length;
+    if(n){const lv=n>=4?4:3;S.rs[k.name]=n;found.push(k.name);if((S.skills[k.name]||0)<lv)S.skills[k.name]=lv}}
+  const m=t.match(/(b\.?\s?tech|bachelor of technology|bachelor of engineering|b\.?\s?e\b|m\.?\s?tech|mba|bca|mca|b\.?\s?sc|m\.?\s?sc)[^\n|;.,:]{0,70}/i);
+  let dn="";
+  if(m&&!S.degree){const d=m[0].trim();$("#deg").value=d;dn=` Degree detected: ${h(d)}.`;persist();onDegree()}
+  if(!S.role){
+    const c={};found.forEach(n=>{const k=BY[n].cat;if(k!=="Soft")c[k]=(c[k]||0)+1});
+    const top=Object.entries(c).sort((a,b)=>b[1]-a[1])[0],role=top&&ROLEBYCAT[top[0]];
+    if(role){S.role=role;S.roleAuto=true;$("#role").value=role;persist();renderRoles();search()}
+  }
+  $("#scan").innerHTML=`<div class="note"><b>${h(name)}</b><br>${found.length} skills found and added at level 3 to 4. Adjust levels below.${dn}<div>${found.map(x=>`<span class="tag have">${h(x)}</span>`).join("")}</div></div>`;
+  refresh();
+}
+$("#resBtn").onclick=()=>scanResume($("#resume").value,"Pasted text");
+$("#drop").onclick=()=>$("#cv").click();
+$("#pick").onclick=()=>$("#cv").click();
+$("#sampleCv").onclick=()=>scanResume(SAMPLE_CV,"Sample resume");
+$("#drop").onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("#cv").click()}};
+$("#cv").onchange=e=>{handleFile(e.target.files[0]);e.target.value=""};
+["dragenter","dragover"].forEach(v=>$("#drop").addEventListener(v,e=>{e.preventDefault();$("#drop").classList.add("over")}));
+["dragleave","drop"].forEach(v=>$("#drop").addEventListener(v,e=>{e.preventDefault();$("#drop").classList.remove("over")}));
+$("#drop").addEventListener("drop",e=>handleFile(e.dataTransfer.files[0]));
+document.addEventListener("dragover",e=>e.preventDefault());document.addEventListener("drop",e=>e.preventDefault());
+
+/* ===== Resume check against the target job ===== */
+function inCV(name){const k=BY[name];k.re.lastIndex=0;return k.re.test(S.resume)}
+function cvShowcase(A){
+  if(!S.rs)return"";
+  const e=Object.entries(S.rs);
+  if(!e.length)return`<h2>Skills found in your resume</h2><div class="empty">No known skills were found in this resume. Add them manually on the left.</div>`;
+  const dem=A?Object.fromEntries(A.m.map(x=>[x.s,x.dem])):{},want=k=>(dem[k]||0)>=.05;
+  const groups=[...new Set(SK.map(x=>x.cat))].map(c=>{const it=e.filter(([k])=>BY[k].cat===c).sort((a,b)=>b[1]-a[1]);
+    return it.length?`<p><b>${h(c)}</b><br>${it.map(([k,n])=>`<span class="tag ${!A||want(k)?"have":"miss"}">${h(k)} ×${n}${A&&dem[k]?" · "+Math.round(dem[k]*100)+"%":""}</span>`).join("")}</p>`:""}).join("");
+  const wn=A?e.filter(([k])=>want(k)).length:0,miss=A?A.top.filter(x=>!(x.s in S.rs)).map(x=>x.s):[];
+  return`<h2>Skills found in your resume</h2>
+  ${A?`<p><b>${e.length}</b> skills found. <b>${wn}</b> match what these ${A.n} live jobs ask for and ${e.length-wn} are not asked for. Solid tags are in demand, dashed tags are not asked in these jobs. The percentage is the share of live jobs asking for that skill. ×N is how often your resume mentions it.</p>`:`<p><b>${e.length}</b> skills found. Comparing with live jobs…</p>`}
+  ${groups}${miss.length?`<p><b>Asked by jobs but not in your resume</b><br>${miss.map(x=>`<span class="tag miss">${h(x)}</span>`).join("")}</p>`:""}`;
+}
+function cvCheck(A){
+  if(!S.resume)return null;
+  const t=S.resume,words=t.split(/\s+/).length;
+  const kw=A.top.length?Math.round(A.top.filter(x=>inCV(x.s)).length/A.top.length*100):0;
+  const addKw=A.top.filter(x=>x.lv>=3&&!inCV(x.s)).slice(0,8).map(x=>x.s);
+  const secs=[["Skills",/skills/i],["Projects",/projects?/i],["Education",/education|academic/i],["Experience or internship",/experience|internship|training/i]].filter(x=>!x[1].test(t)).map(x=>x[0]);
+  const nums=(t.match(/\d+(\.\d+)?\s?%|\b\d{2,}\+?\s?(users|projects|systems|sensors|devices|students|members|hours)/gi)||[]).length;
+  const tips=[];
+  if(secs.length)tips.push("Add sections: "+secs.join(", ")+".");
+  if(nums<3)tips.push("Add measurable results, for example: reduced error by 15%, tested 20 sensors.");
+  if(words<150)tips.push("Your resume is short ("+words+" words). Describe each project in 2 to 3 lines.");
+  if(words>900)tips.push("Your resume is long ("+words+" words). Aim for one or two pages.");
+  if(!/github\.com|linkedin\.com/i.test(t))tips.push("Add a GitHub or LinkedIn link.");
+  return{kw,addKw,tips};
+}
+$("#out").onclick=async e=>{
+  if(e.target.id==="copy"){try{await navigator.clipboard.writeText(REPORT);e.target.textContent="Copied"}catch{e.target.textContent="Copy failed"}setTimeout(()=>e.target.textContent="Copy report",1500)}
+  if(e.target.id==="print")window.print();
+};
+
+/* ===== Init ===== */
+$("#degDl").innerHTML=DEGNAMES.map(d=>`<option value="${h(d)}">`).join("");
+$("#skDl").innerHTML=SK.map(s=>`<option value="${h(s.name)}">`).join("");
+$("#deg").value=S.degree;$("#role").value=S.role;
+{const d=degMatch(S.degree||"");if(d){S.suggest=d.s;S.roles=d.r}}
+renderSug();renderRoles();renderMine();render();
+if(S.role)search();
+</script>
+</body>
+</html>
